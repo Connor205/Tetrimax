@@ -1,110 +1,10 @@
-from dataclasses import dataclass
 from queue import Queue
-from typing import Set, Tuple
-from pprint import pprint
-import random
 from functools import cache
-from tqdm import tqdm
-import itertools
+import tqdm
 
-from piece import PIECES, get_random_piece, Piece, Rotation, hero, smashboy, clevelandZ, teeWee, rhodeIslandZ, blueRicky
-from constants import BLOCK_CHARACTER, BOARD_WIDTH, BOARD_HEIGHT
-
-############################
-# This FILE IS DEPRECATED, use tetrisUtilities and tetrisClasses
-############################
-
-
-@dataclass(frozen=True)
-class Move:
-    x: int
-    y: int
-    rotation: Rotation
-
-
-class Board:
-
-    def __init__(self, matrix: list = None) -> None:
-        if matrix is None:
-            self._matrix = tuple(
-                tuple([0] * BOARD_WIDTH) for _ in range(BOARD_HEIGHT))
-        else:
-            h = len(matrix)
-            w = len(matrix[0])
-            if h != BOARD_HEIGHT or w != BOARD_WIDTH:
-                raise ValueError(
-                    f"Board must be {BOARD_WIDTH}x{BOARD_HEIGHT}, board is {w}x{h}"
-                )
-            self._matrix = tuple(tuple(row) for row in matrix)
-        self._hashMatrix = tuple(
-            [tuple([bool(x) for x in row]) for row in self._matrix])
-
-    def get_square(self, x: int, y: int) -> int:
-        if x < 0 or x >= BOARD_WIDTH or y < 0 or y >= BOARD_HEIGHT:
-            return None
-        return self._matrix[y][x]
-
-    def get_square_truthy(self, x: int, y: int) -> bool:
-        return self.get_square(x, y) is not None and self.get_square(x, y) > 0
-
-    def get_row(self, row: int) -> tuple:
-        return self._matrix[row]
-
-    def make_move(self, piece: Piece, move: Move) -> Tuple:
-        """
-        Returns tuple of newBoard, lines cleared
-        This function does not validate the move, will throw errors
-        """
-        newMatrix = list(list(row) for row in self._matrix)
-        rot = piece.get_rotation(move.rotation)
-        for xOff in range(4):
-            for yOff in range(4):
-                if rot.get_pos(xOff, yOff):
-                    newMatrix[move.y + yOff][move.x + xOff] = piece.number
-        # We need to remove cleared rows now
-        linesToRemove = []
-        for i in range(BOARD_HEIGHT):
-            if all(newMatrix[i]):
-                linesToRemove.append(i)
-        for i in linesToRemove:
-            newMatrix.pop(i)
-            newMatrix.insert(0, [0] * BOARD_WIDTH)
-        return Board(newMatrix), len(linesToRemove)
-
-    def get_board_sum(self):
-        return sum(sum(row) for row in self._matrix)
-
-    @cache
-    def get_highest_block(self) -> int:
-        # Returns the row number of the highest block
-        # Reminder that lower numbers are actually higher blocks since the 0,0 is upper left
-        for i in range(BOARD_HEIGHT):
-            if any(self.get_row(i)):
-                return i
-        return BOARD_HEIGHT
-
-    def __repr__(self) -> str:
-
-        def convertLineToString(line):
-            return "".join([str(x) for x in line])
-            return "".join([BLOCK_CHARACTER if x else "_" for x in line])
-
-        return "\n".join(convertLineToString(line) for line in self._matrix)
-
-    def __hash__(self) -> int:
-        # Boards are the same if their matrix is the same based on booleans, not colors
-        return hash(self._hashMatrix)
-
-    def __eq__(self, other: 'Board') -> bool:
-        return self._matrix == other._matrix
-
-
-@dataclass(frozen=True)
-class TetrisPlacementState:
-    board: Board
-    x: int
-    y: int
-    rotation: Rotation
+from tetrisClasses import Board, Piece, Move, TetrisPlacementState
+from piece import Piece, Rotation
+from constants import BOARD_WIDTH, BOARD_HEIGHT, BLOCK_CHARACTER
 
 
 def get_all_legal_moves(
@@ -171,15 +71,17 @@ def get_all_drop_moves(b: Board, piece: Piece):
         rot = piece.get_rotation(i)
         left, right = rot.get_width_range()
         for x in range(left, right, 1):
-            y = b.get_highest_block() - 5  # init value for y
+            y = max(0, b.get_highest_block() - 5)  # init value for y
             while True:
                 state = TetrisPlacementState(b, x, y, i)
                 #TODO: Do some math to see if we really need to check legality here
-                if is_state_legal(state, piece) and is_state_goal(
-                        state, piece):
+                if not is_state_legal(state, piece):
+                    break
+                if is_state_goal(state, piece):
                     moves.add(Move(state.x, state.y, state.rotation))
                     break
                 y += 1
+
     return moves
 
 
@@ -255,43 +157,3 @@ def generate_boards_from_pieces(pieces: list) -> list:
         boards = list(set(newBoards))
 
     return boards, losingBoards
-
-
-# def generateMovesSetsOfPermutations(l):
-#     perms = itertools.product(PIECES, repeat=l)
-#     for p in tqdm(perms):
-#         boards, losingBoards = generate_boards_from_pieces(p)
-#         MoveSaver.recordAllMoves()
-#     MoveSaver.printStats()
-
-# blankBoard = Board()
-# ms = get_all_legal_moves(blankBoard, smashboy)
-
-# boards = set(blankBoard.make_move(smashboy, m[2], m[0], m[1])[0] for m in ms)
-
-# newB: Board = boards.pop()
-
-# ms = get_all_legal_moves(newB, clevelandZ)
-
-# boards = set(newB.make_move(clevelandZ, m[2], m[0], m[1])[0] for m in ms)
-
-# for b in boards:
-#     print(b)
-#     print()
-
-# print(len(boards))
-# for i in range(3):
-#     boards, losingBoards = generate_boards_from_pieces(
-#         [get_random_piece() for _ in range(4)])
-#     MoveSaver.recordAllMoves()
-# boards, losingBoards = generate_boards_from_pieces(
-#     [hero, rhodeIslandZ, blueRicky, clevelandZ])
-# MoveSaver.recordAllMoves()
-# MoveSaver.printStats()
-# for b in boards:
-#     print(b)
-#     print()
-
-b = Board()
-boards = get_all_drop_boards(b, smashboy)
-print(boards)
