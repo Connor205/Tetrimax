@@ -1,5 +1,4 @@
 from queue import Queue
-from functools import cache
 import tqdm
 
 from tetrisClasses import Board, Piece, Move, TetrisPlacementState
@@ -93,7 +92,6 @@ def get_all_drop_boards(b: Board, piece: Piece):
     return boards
 
 
-@cache
 def is_state_legal(state: TetrisPlacementState, piece):
     board = state.board
     x = state.x
@@ -117,7 +115,6 @@ def is_state_legal(state: TetrisPlacementState, piece):
     return True
 
 
-@cache
 def is_state_goal(state, piece):
     board = state.board
     x = state.x

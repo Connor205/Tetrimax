@@ -1,5 +1,4 @@
 from __future__ import annotations
-from functools import cache
 from typing import Tuple
 
 from constants import BOARD_WIDTH, BOARD_HEIGHT, BLOCK_CHARACTER

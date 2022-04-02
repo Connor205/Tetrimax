@@ -7,7 +7,6 @@
 # Because i'm not fucking crazy I am going to use a python dataclass for this
 
 from dataclasses import dataclass
-from functools import cache
 import random
 from constants import BOARD_WIDTH
 
@@ -39,19 +38,16 @@ class Rotation:
 
     # These two functions could probably be stored somewhere so that they do not need to be recalculated every time
     # Not sure if @cache solves this
-    @cache
     def get_furthest_left(self) -> int:
         for col in range(4):
             if any(self.get_column(col)):
                 return col
 
-    @cache
     def get_furthest_right(self) -> int:
         for col in range(3, -1, -1):
             if any(self.get_column(col)):
                 return col
 
-    @cache
     def get_width_range(self) -> tuple:
         return 0 - self.get_furthest_left(
         ), BOARD_WIDTH - self.get_furthest_right()
@@ -181,7 +177,7 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 c = False
         # draw the screen
-        for i, piece in enumerate(pieces):
+        for i, piece in enumerate(PIECES):
             currentY = i * 50 + 50
             for j in range(4):
                 rotation = piece.get_rotation(j)
