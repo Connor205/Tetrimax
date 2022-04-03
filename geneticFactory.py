@@ -158,7 +158,7 @@ def trainGeneticAgent(featureGenerator, totalPopulation=1000, generations=10):
 
 
 def main():
-    trainGeneticAgent(featureVector, totalPopulation=200, generations=20)
+    trainGeneticAgent(featureVector, totalPopulation=1000, generations=50)
 
 
 # Main function
