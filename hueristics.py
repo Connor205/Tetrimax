@@ -50,4 +50,5 @@ def featureVector(board: Board, prevBoard: Board):
         board.get_num_pits(),
         (prevBoard.get_num_blocks() + 4 - board.get_num_blocks()) //
         10,  # Equivalent to number of lines cleared
+        1 if board.is_lost() else 0,
     ])

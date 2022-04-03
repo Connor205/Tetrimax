@@ -117,12 +117,9 @@ class NetworkAgent(SimpleAgent):
         self.featureVectorGenerator = featureVectorGenerator
         self.numFeatures = len(featureVectorGenerator(Board(), Board()))
         self.network = keras.Sequential([
+            Dense(self.numFeatures, name="layer1", use_bias=True),
             Dense(self.numFeatures,
-                  activation="sigmoid",
-                  name="layer1",
-                  use_bias=False),
-            Dense(self.numFeatures,
-                  activation="relu",
+                  activation="selu",
                   name="layer2",
                   use_bias=False),
             Dense(1, name="layer3", use_bias=False)
@@ -131,19 +128,25 @@ class NetworkAgent(SimpleAgent):
         init_feature_vector = featureVectorGenerator(Board(), Board())
         fv = np.asmatrix(init_feature_vector)
         self.network(fv)
+        # print(self.network.layers[0].get_weights()[1])
         composite_list = [
             np.array(weights[x:x + self.numFeatures])
             for x in range(0, len(weights), self.numFeatures)
         ]
         layer1Weights = np.array(composite_list[:self.numFeatures],
                                  dtype=object)
-        layer2Weights = np.array(composite_list[self.numFeatures:2 *
-                                                self.numFeatures],
+        layer1Bias = np.array(
+            composite_list[self.numFeatures:self.numFeatures + 1],
+            dtype=object)[0]
+        # print("Layer1 Weights: ", layer1Weights)
+        # print("Layer1 Bias: ", layer1Bias)
+        layer2Weights = np.array(composite_list[self.numFeatures +
+                                                1:2 * self.numFeatures + 1],
                                  dtype=object)
         layer3Weights = np.asmatrix(
-            np.array(composite_list[2 * self.numFeatures:], dtype=object))
+            np.array(composite_list[2 * self.numFeatures + 1:], dtype=object))
         layer3Weights = layer3Weights.transpose()
-        self.network.layers[0].set_weights([layer1Weights])
+        self.network.layers[0].set_weights([layer1Weights, layer1Bias])
         self.network.layers[1].set_weights([layer2Weights])
         self.network.layers[2].set_weights([layer3Weights])
         # self.network.summary()
@@ -178,7 +181,7 @@ class MiniMaxAgent(TetrisAgent):
 
 
 def main():
-    nnAgent = NetworkAgent(featureVector, np.zeros(55))
+    nnAgent = NetworkAgent(featureVector, np.zeros(180))
 
 
 # Main Method

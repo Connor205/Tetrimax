@@ -22,7 +22,7 @@ class GeneticFactory:
         # We find the number of weights based on the number of features on an empty board
         self.featureGenerator = featureGenerator
         self.numFeatures = len(featureGenerator(b, b))
-        self.numWeights = self.numFeatures * self.numFeatures * 2 + self.numFeatures
+        self.numWeights = self.numFeatures * self.numFeatures * 2 + self.numFeatures * 2
         self.logger.debug("Number of features: {}".format(self.numFeatures))
         self.totalPopulation = totalPopulation
 
@@ -30,7 +30,7 @@ class GeneticFactory:
 
         def generateRandomWeights():
             return [
-                round(random.uniform(-1, 1), 2) for _ in range(self.numWeights)
+                round(random.uniform(-4, 4), 2) for _ in range(self.numWeights)
             ]
 
         return [generateRandomWeights() for _ in range(self.totalPopulation)]
@@ -79,9 +79,15 @@ class GeneticFactory:
                 break
             agent = NetworkAgent(self.featureGenerator, weights)
             sim = TetrisSimulation(agent, numKnownPieces=1)
-            games = [sim.playGame(scoringByLines=False) for _ in range(3)]
-            scores = [x[1] for x in games]
-            evaluationQueue.put((sum(scores) / 3, weights))
+            games = [sim.playGame(scoringByLines=False) for _ in range(5)]
+            scores = []
+            for game in games:
+                board, score, survived, boards, moves, pieces, linesCleared = game
+                if survived:
+                    scores.append(score * 2)
+                else:
+                    scores.append(score)
+            evaluationQueue.put((sum(scores), weights))
         print("This Process Is Finished, recieved false from queue")
 
     def runSimulation(self, generations=10):
@@ -158,7 +164,7 @@ def trainGeneticAgent(featureGenerator, totalPopulation=1000, generations=10):
 
 
 def main():
-    trainGeneticAgent(featureVector, totalPopulation=1000, generations=50)
+    trainGeneticAgent(featureVector, totalPopulation=500, generations=50)
 
 
 # Main function
