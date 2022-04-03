@@ -1,9 +1,14 @@
 import random
 import numpy as np
+import tensorflow as tf
+
+from tensorflow import keras
+from tensorflow.python.keras.layers import Dense
 
 from tetrisClasses import Board, Piece, Move, TetrisPlacementState
 from tetrisUtilities import get_all_drop_moves, get_all_drop_boards, is_state_legal, is_state_goal, generate_boards_from_pieces
 from myLogger import getModuleLogger
+from hueristics import featureVector
 
 
 class TetrisAgent():
@@ -70,6 +75,10 @@ class DepthAgent(SimpleAgent):
 
 
 class FeatureAgent(SimpleAgent):
+    """
+    So lets be clear, this agent is AWESOME if weighted correctly. 
+    Training this agent to infinitely clear lines is very doable
+    """
 
     def __init__(self, featureVectorGenerator, weights):
         super().__init__()
@@ -92,6 +101,64 @@ class FeatureAgent(SimpleAgent):
         return maxEval
 
 
+class NetworkAgent(SimpleAgent):
+    """So FeatureAgent is great, no issues BUT all of the behaviours are linear
+    This is because thats all we need to win infinetley
+    In theory we really dont need more than that. 
+    BUT I WANNA WATCH AN AGENT SCORE A FKING TETRIS
+    SOOOOO here we go. We can create an agent thats weights are actually the weights 
+    for a CNN. Then we simply use the NN for evaluation of a given board state. 
+    Noteably this agent will have the same inputs as the FeatureAgent, but will
+    be allowed to have a more complex set of behaviors. 
+    """
+
+    def __init__(self, featureVectorGenerator, weights) -> None:
+        super().__init__()
+        self.featureVectorGenerator = featureVectorGenerator
+        self.numFeatures = len(featureVectorGenerator(Board()))
+        self.network = keras.Sequential([
+            Dense(self.numFeatures,
+                  activation="sigmoid",
+                  name="layer1",
+                  use_bias=False),
+            Dense(self.numFeatures,
+                  activation="relu",
+                  name="layer2",
+                  use_bias=False),
+            Dense(1, name="layer3", use_bias=False)
+        ])
+
+        init_feature_vector = featureVectorGenerator(Board())
+        fv = np.asmatrix(init_feature_vector)
+        self.network(fv)
+        composite_list = [
+            weights[x:x + self.numFeatures] for x in range(0, len(weights), 5)
+        ]
+        layer1Weights = np.array(composite_list[:self.numFeatures])
+        layer2Weights = np.array(composite_list[self.numFeatures:2 *
+                                                self.numFeatures])
+        layer3Weights = np.asmatrix(
+            np.array(composite_list[2 * self.numFeatures:]))
+        layer3Weights = layer3Weights.transpose()
+        self.network.layers[0].set_weights([layer1Weights])
+        self.network.layers[1].set_weights([layer2Weights])
+        self.network.layers[2].set_weights([layer3Weights])
+        # self.network.summary()
+
+    def get_move(self, board, pieces):
+        moves = self.get_all_moves(board, pieces[0])
+        prevBoards = {}
+        for m in moves:
+            prevBoards[board.make_move(pieces[0], m)[0]] = m
+        evaluations = [(self.network(
+            np.asmatrix(self.featureVectorGenerator(b))).numpy()[0][0], move)
+                       for b, move in prevBoards.items()]
+        if len(evaluations) == 0:
+            return None
+        maxEval = max(evaluations, key=lambda x: x[0])[1]
+        return maxEval
+
+
 class MiniMaxAgent(TetrisAgent):
 
     def __init__(self, hueristic) -> None:
@@ -105,3 +172,12 @@ class MiniMaxAgent(TetrisAgent):
         if depth == 0:
             return self.heuristic(board)
         best_move = None
+
+
+def main():
+    nnAgent = NetworkAgent(featureVector, np.zeros(55))
+
+
+# Main Method
+if __name__ == "__main__":
+    main()

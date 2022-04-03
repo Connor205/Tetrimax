@@ -30,11 +30,24 @@ def customHueristic(board: Board):
             1 if board.is_lost() else 0)
 
 
-def featureVector(board: Board):
+def originalFeatureVector(board: Board):
+    return np.array([
+        board.get_normalized_height(),
+        board.get_aggregate_height(),
+        board.get_num_holes(),
+        board.get_bumpiness(), 1 if board.is_lost() else 0
+    ])
+
+
+def featureVector(board: Board, prevBoard: Board):
     return np.array([
         board.get_normalized_height(),
         board.get_aggregate_height(),
         board.get_num_holes(),
         board.get_bumpiness(),
-        1 if board.is_lost() else 0,
+        board.get_num_row_transitions(),
+        board.get_num_column_transitions(),
+        board.get_num_pits(),
+        (prevBoard.get_num_blocks() + 4 - board.get_num_blocks()) //
+        10,  # Equivalent to number of lines cleared
     ])

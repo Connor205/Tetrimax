@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Tuple
 
+from pyparsing import line
+
 from constants import BOARD_WIDTH, BOARD_HEIGHT, BLOCK_CHARACTER
 from dataclasses import dataclass
 from piece import Piece, Rotation
@@ -45,9 +47,8 @@ class Board:
         return tuple(row[col] for row in self._matrix)
 
     def get_colmn_height(self, col: int) -> int:
-        c = self.get_column(col)
         for i in range(BOARD_HEIGHT):
-            if c[i] != 0:
+            if self.get_square_truthy(col, i):
                 return i
         return BOARD_HEIGHT
 
@@ -57,7 +58,10 @@ class Board:
     def get_normalized_column_height(self, col: int) -> int:
         return BOARD_HEIGHT - self.get_colmn_height(col)
 
-    def make_move(self, piece: Piece, move: Move) -> Tuple(Board, int):
+    def make_move(self,
+                  piece: Piece,
+                  move: Move,
+                  scoringByLines=True) -> Tuple(Board, int):
         """
         Returns tuple of newBoard, lines cleared
         This function does not validate the move, will throw errors
@@ -76,7 +80,10 @@ class Board:
         for i in linesToRemove:
             newMatrix.pop(i)
             newMatrix.insert(0, [0] * BOARD_WIDTH)
-        return Board(newMatrix), len(linesToRemove)
+        if scoringByLines:
+            return Board(newMatrix), len(linesToRemove)
+        else:  # Simple enough to reward
+            return Board(newMatrix), len(linesToRemove) * len(linesToRemove)
 
     def get_board_sum(self):
         return sum(sum(row) for row in self._matrix)
@@ -115,6 +122,32 @@ class Board:
 
     def is_lost(self) -> bool:
         return self.get_highest_block() == 0
+
+    def get_num_pits(self) -> int:
+        total = 0
+        for i in range(BOARD_WIDTH):
+            if self.get_normalized_column_height(i) == 0:
+                total += 1
+        return total
+
+    def get_num_row_transitions(self):
+        total = 0
+        for i in range(BOARD_WIDTH):
+            for j in range(BOARD_HEIGHT - 1):
+                if self.get_square(i, j) != self.get_square(i, j + 1):
+                    total += 1
+        return total
+
+    def get_num_column_transitions(self):
+        total = 0
+        for i in range(BOARD_HEIGHT - 1):
+            for j in range(BOARD_WIDTH):
+                if self.get_square(i, j) != self.get_square(i + 1, j):
+                    total += 1
+        return total
+
+    def get_num_blocks(self) -> int:
+        return sum(sum(row) for row in self._hashMatrix)
 
     def __repr__(self) -> str:
 
