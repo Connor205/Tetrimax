@@ -21,7 +21,7 @@ class GeneticFactory:
         b = Board()
         # We find the number of weights based on the number of features on an empty board
         self.featureGenerator = featureGenerator
-        self.numFeatures = len(featureGenerator(b))
+        self.numFeatures = len(featureGenerator(b, b))
         self.numWeights = self.numFeatures * self.numFeatures * 2 + self.numFeatures
         self.logger.debug("Number of features: {}".format(self.numFeatures))
         self.totalPopulation = totalPopulation
@@ -152,7 +152,8 @@ class GeneticFactory:
 
 def trainGeneticAgent(featureGenerator, totalPopulation=1000, generations=10):
     factory = GeneticFactory(featureGenerator, totalPopulation=totalPopulation)
-    best_agent = factory.runThreadedSimulation(generations=generations)
+    best_agent = factory.runThreadedSimulation(generations=generations,
+                                               threads=16)
     print(best_agent)
 
 

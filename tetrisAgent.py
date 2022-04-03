@@ -115,7 +115,7 @@ class NetworkAgent(SimpleAgent):
     def __init__(self, featureVectorGenerator, weights) -> None:
         super().__init__()
         self.featureVectorGenerator = featureVectorGenerator
-        self.numFeatures = len(featureVectorGenerator(Board()))
+        self.numFeatures = len(featureVectorGenerator(Board(), Board()))
         self.network = keras.Sequential([
             Dense(self.numFeatures,
                   activation="sigmoid",
@@ -128,17 +128,20 @@ class NetworkAgent(SimpleAgent):
             Dense(1, name="layer3", use_bias=False)
         ])
 
-        init_feature_vector = featureVectorGenerator(Board())
+        init_feature_vector = featureVectorGenerator(Board(), Board())
         fv = np.asmatrix(init_feature_vector)
         self.network(fv)
         composite_list = [
-            weights[x:x + self.numFeatures] for x in range(0, len(weights), 5)
+            np.array(weights[x:x + self.numFeatures])
+            for x in range(0, len(weights), self.numFeatures)
         ]
-        layer1Weights = np.array(composite_list[:self.numFeatures])
+        layer1Weights = np.array(composite_list[:self.numFeatures],
+                                 dtype=object)
         layer2Weights = np.array(composite_list[self.numFeatures:2 *
-                                                self.numFeatures])
+                                                self.numFeatures],
+                                 dtype=object)
         layer3Weights = np.asmatrix(
-            np.array(composite_list[2 * self.numFeatures:]))
+            np.array(composite_list[2 * self.numFeatures:], dtype=object))
         layer3Weights = layer3Weights.transpose()
         self.network.layers[0].set_weights([layer1Weights])
         self.network.layers[1].set_weights([layer2Weights])
@@ -151,8 +154,8 @@ class NetworkAgent(SimpleAgent):
         for m in moves:
             prevBoards[board.make_move(pieces[0], m)[0]] = m
         evaluations = [(self.network(
-            np.asmatrix(self.featureVectorGenerator(b))).numpy()[0][0], move)
-                       for b, move in prevBoards.items()]
+            np.asmatrix(self.featureVectorGenerator(b, board))).numpy()[0][0],
+                        move) for b, move in prevBoards.items()]
         if len(evaluations) == 0:
             return None
         maxEval = max(evaluations, key=lambda x: x[0])[1]

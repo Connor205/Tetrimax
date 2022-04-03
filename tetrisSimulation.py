@@ -18,7 +18,7 @@ class TetrisSimulation:
     """
 
     def __init__(self, agent: TetrisAgent, numKnownPieces=3) -> None:
-        self.logger = getModuleLogger(__name__, logging.DEBUG)
+        self.logger = getModuleLogger(__name__, logging.INFO)
         if numKnownPieces < 1:
             raise ValueError("Must have at least one known piece")
         self.board = Board()
