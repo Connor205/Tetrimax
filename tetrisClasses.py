@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import Tuple
 
-from pyparsing import line
-
 from constants import BOARD_WIDTH, BOARD_HEIGHT, BLOCK_CHARACTER
 from dataclasses import dataclass
 from piece import Piece, Rotation

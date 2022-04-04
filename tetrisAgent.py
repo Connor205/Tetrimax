@@ -165,6 +165,31 @@ class NetworkAgent(SimpleAgent):
         return maxEval
 
 
+class NeatAgent(SimpleAgent):
+    """
+    This agent is a neural network that is trained using NEAT. 
+    """
+
+    def __init__(self, featureVectorGenerator, network) -> None:
+        super().__init__()
+        self.network = network
+        self.featureVectorGenerator = featureVectorGenerator
+
+    def get_move(self, board, pieces):
+        moves = self.get_all_moves(board, pieces[0])
+        prevBoards = {}
+        for m in moves:
+            prevBoards[board.make_move(pieces[0], m)[0]] = m
+        boards = [(self.featureVectorGenerator(b, board), move)
+                  for b, move in prevBoards.items()]
+        evaluations = [(self.network.activate(xi), move)
+                       for xi, move in boards]
+        if len(evaluations) == 0:
+            return None
+        maxEval = max(evaluations, key=lambda x: x[0])[1]
+        return maxEval
+
+
 class MiniMaxAgent(TetrisAgent):
 
     def __init__(self, hueristic) -> None:

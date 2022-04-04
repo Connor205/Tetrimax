@@ -5,7 +5,9 @@ from tqdm import tqdm
 from multiprocessing import Process, Queue
 import time
 import tensorflow as tf
-from typing import List
+from typing import List, Tuple
+
+tf.config.set_visible_devices([], 'GPU')
 
 from tetrisSimulation import TetrisSimulation
 from myLogger import getModuleLogger
@@ -17,7 +19,7 @@ from hueristics import featureVector
 class GeneticFactory:
 
     def __init__(self, featureGenerator, totalPopulation=1000) -> None:
-        self.logger = getModuleLogger(__name__, logging.INFO)
+        self.logger = getModuleLogger(__name__, logging.DEBUG)
         b = Board()
         # We find the number of weights based on the number of features on an empty board
         self.featureGenerator = featureGenerator
@@ -135,6 +137,8 @@ class GeneticFactory:
                     continue
                 else:
                     evaluations.append(evaluationQueue.get())
+                self.logger.debug("Current Evaluation Length: {}".format(
+                    len(evaluations)))
                 if len(evaluations) == self.totalPopulation:
                     break
 
