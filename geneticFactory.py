@@ -7,6 +7,7 @@ import time
 import tensorflow as tf
 from typing import List, Tuple
 
+# Using a GPU is kinda unnecesssary here and threading is faster since we dont actually train any models
 tf.config.set_visible_devices([], 'GPU')
 
 from tetrisSimulation import TetrisSimulation

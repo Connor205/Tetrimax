@@ -22,7 +22,6 @@ def eval_single_genome(genome, config):
 
 
 def eval_genomes(genomes, config):
-
     evaluator = neat.ParallelEvaluator(16, eval_single_genome)
     evaluator.evaluate(genomes, config)
 

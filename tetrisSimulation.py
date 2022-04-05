@@ -1,11 +1,13 @@
 import logging
 from typing import Tuple, List
 from logging import getLogger
+import neat
+import pickle
 
 from tetrisClasses import Board, Piece, Move, TetrisPlacementState
 from tetrisUtilities import get_all_drop_moves, get_all_drop_boards, is_state_legal, is_state_goal, generate_boards_from_pieces
 from piece import Piece, Rotation, PIECES
-from tetrisAgent import DepthAgent, NetworkAgent, TetrisAgent, SimpleAgent
+from tetrisAgent import DepthAgent, NeatAgent, NetworkAgent, TetrisAgent, SimpleAgent
 from tetrisPieceGenerator import TetrisPieceGenerator
 from hueristics import aggregateHeightHueristic, maxHeightHueristic, customHueristic, featureVector, originalFeatureVector
 from myLogger import getModuleLogger
@@ -100,7 +102,7 @@ class TetrisSimulation:
         return self.board.get_highest_block() == 0
 
 
-def main():
+def testNetworkAgent():
     logger = getModuleLogger(__name__)
     nnAgent = NetworkAgent(
         featureVectorGenerator=featureVector,
@@ -176,5 +178,63 @@ def main():
         # logger.info(f"Board: {board}")
 
 
+def eval_single_genome(genome, config):
+    total = 0
+    net = neat.nn.FeedForwardNetwork.create(genome, config)
+    for i in range(10):
+        agent = NeatAgent(featureVector, net)
+        sim = TetrisSimulation(agent)
+        board, score, survived, boards, moves, pieces, linesCleared = sim.playGame(
+            scoringByLines=False)
+        total += score
+    total /= 10
+    # print("Finished Evaluating Genome")
+    return total
+
+
+def eval_genomes(genomes, config):
+    evaluator = neat.ParallelEvaluator(16, eval_single_genome)
+    evaluator.evaluate(genomes, config)
+
+
+def generateNeatAgentFromCheckpoint(file: str, outputFile: str):
+    logger = getModuleLogger(__name__)
+    logger.info("Loading checkpoint")
+    checkpoint = neat.Checkpointer.restore_checkpoint(file)
+    checkpoint.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    checkpoint.add_reporter(stats)
+    winner = checkpoint.run(eval_genomes, 1)
+    logger.info("Saving neat genome")
+    with open(outputFile, "wb") as f:
+        pickle.dump(winner, f)
+    logger.info("Saved neat genome to file: " + outputFile)
+
+
+def testNeatAgent(genomePickleFile: str):
+    # Load Genome from file using pickle
+    with open(genomePickleFile, "rb") as f:
+        genome = pickle.load(f)
+    # Create network from genome
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         "tetrisagentconfig")
+    net = neat.nn.FeedForwardNetwork.create(genome, config)
+    logger = getModuleLogger(__name__)
+    logger.info("Testing neat agent")
+    agent = NeatAgent(featureVector, net)
+    sim = TetrisSimulation(agent)
+    # Play a game from simulation
+    board, score, survived, boards, moves, pieces, linesCleared = sim.playGame(
+        scoringByLines=False)
+    for b in boards:
+        print("------------------")
+        print(b)
+    logger.info(f"Score: {score}")
+    logger.info(f"Lines cleared: {linesCleared}")
+    logger.info(f"Survived: {survived}")
+
+
 if __name__ == "__main__":
-    main()
+    # generateNeatAgentFromCheckpoint("neat-checkpoint-95", "neat-agent-95.pkl")
+    testNeatAgent("neat-agent-95.pkl")
