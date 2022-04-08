@@ -38,14 +38,14 @@ def getBoardsFromNeatAgent(genomePickleFile: str):
     sim = TetrisSimulation(agent)
     # Play a game from simulation
     board, score, survived, boards, moves, pieces, linesCleared = sim.playGame(
-        scoringByLines=False)
+        scoringType="lines")
     logger.info(f"Score: {score}")
     logger.info(f"Lines cleared: {linesCleared}")
     logger.info(f"Survived: {survived}")
     return boards, moves, pieces
 
 
-def playAnimation(boards, moves, pieces, delay=.1):
+def playAnimation(boards, moves, pieces, delay=.005):
     pg.init()
     SCREENRECT = pg.Rect(0, 0, 640, 480)
     screen = pg.display.set_mode(SCREENRECT.size)
@@ -82,7 +82,7 @@ def playAnimation(boards, moves, pieces, delay=.1):
 
 
 def main():
-    boards, moves, pieces = getBoardsFromNeatAgent("neat-agent-95.pkl")
+    boards, moves, pieces = getBoardsFromNeatAgent("neat-agent-95-10x10.pkl")
     print(len(boards))
     playAnimation(boards, moves, pieces)
 

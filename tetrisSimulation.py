@@ -1,4 +1,5 @@
 import logging
+from tkinter import scrolledtext
 from typing import Tuple, List
 from logging import getLogger
 import neat
@@ -37,7 +38,7 @@ class TetrisSimulation:
     def playGame(
         self,
         max_moves=300,
-        scoringByLines=True
+        scoringType="lines"
     ) -> Tuple[Board, int, bool, List[Board], List[Move], List[Piece], int]:
         """
         Simulates a single game of tetris based on the given agent, and returns the final score
@@ -79,10 +80,24 @@ class TetrisSimulation:
             # Add the next piece
             self.knownPieces.append(next(self.pieceGenerator))
             # And then add to the score
-            if scoringByLines:
+            if scoringType == "lines":  # If we are scoring by lines cleared
                 self.score += rowsCleared
-            else:
+            if scoringType == 'squared':  # Squares the numbers of rows cleared
                 self.score += rowsCleared * rowsCleared
+            if scoringType == 'tetris':  # Focuses on tetris, no benefit for anything but tetris
+                if rowsCleared == 4:
+                    self.score += 16
+                else:
+                    self.score += rowsCleared
+            if scoringType == "official":  # Uses the official scoring from lvl 1
+                if rowsCleared == 4:
+                    self.score += 1200
+                elif rowsCleared == 3:
+                    self.score += 300
+                elif rowsCleared == 2:
+                    self.score += 100
+                elif rowsCleared == 1:
+                    self.score += 40
             linesCleared += rowsCleared
 
             # This we check if the game is over
