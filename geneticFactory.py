@@ -15,19 +15,43 @@ from myLogger import getModuleLogger
 from tetrisAgent import FeatureAgent, NetworkAgent
 from tetrisClasses import Board, Piece, Move, TetrisPlacementState
 from hueristics import featureVector
+import csv
 
 
 class GeneticFactory:
 
-    def __init__(self, featureGenerator, totalPopulation=1000) -> None:
+    def __init__(self,
+                 featureGenerator,
+                 totalPopulation=1000,
+                 linear=True,
+                 numGames=5,
+                 scoring='lines',
+                 csvFile=None) -> None:
         self.logger = getModuleLogger(__name__, logging.DEBUG)
         b = Board()
         # We find the number of weights based on the number of features on an empty board
         self.featureGenerator = featureGenerator
         self.numFeatures = len(featureGenerator(b, b))
-        self.numWeights = self.numFeatures * self.numFeatures * 2 + self.numFeatures * 2
+        self.linear = linear
+        if linear:
+            self.numWeights = self.numFeatures
+        else:
+            self.numWeights = self.numFeatures * self.numFeatures * 2 + self.numFeatures * 2
         self.logger.debug("Number of features: {}".format(self.numFeatures))
+        self.logger.debug("Number of weights: {}".format(self.numWeights))
         self.totalPopulation = totalPopulation
+        self.numGames = numGames
+        self.scoring = scoring
+        self.csvFile = csvFile
+        # Checking to make sure that the given file is not there already
+        if self.csvFile is not None:
+            open(self.csvFile, 'x').close()
+            with open(self.csvFile, "a", newline='') as csvFile:
+                writer = csv.writer(csvFile)
+                writer.writerow([
+                    "Generation", "Max Score", "Total Score", "Average Score",
+                    "Weights", "Time for Generation"
+                ])
 
     def generatePopulation(self):
 
@@ -73,24 +97,31 @@ class GeneticFactory:
         return nextGen
 
     def threadedEvaluator(self, queue: Queue, evaluationQueue: Queue):
+        # So this evaluator will constantly be checking for new jobs
+        # and will evaluate them and put them back on the evaluation queue
         while True:
             if queue.empty():
                 time.sleep(.5)
                 continue
             weights = queue.get()
+            # If it is passed false then it will exit
             if weights == False:
                 break
-            agent = NetworkAgent(self.featureGenerator, weights)
+            if self.linear:
+                agent = FeatureAgent(self.featureGenerator, weights)
+            else:
+                agent = NetworkAgent(self.featureGenerator, weights)
             sim = TetrisSimulation(agent, numKnownPieces=1)
-            games = [sim.playGame(scoringByLines=False) for _ in range(5)]
+            games = [
+                sim.playGame(scoringType=self.scoring)
+                for _ in range(self.numGames)
+            ]
             scores = []
             for game in games:
                 board, score, survived, boards, moves, pieces, linesCleared = game
-                if survived:
-                    scores.append(score * 2)
-                else:
-                    scores.append(score)
-            evaluationQueue.put((sum(scores), weights))
+                scores.append(score)
+            # Here we are passing back in the weight
+            evaluationQueue.put((sum(scores) / len(scores), weights))
         print("This Process Is Finished, recieved false from queue")
 
     def runSimulation(self, generations=10):
@@ -98,7 +129,6 @@ class GeneticFactory:
         for i in range(generations):
             self.logger.info("Generation {}".format(i))
             evaluations = []
-            #TODO: Make this parallel, add in threading
             for j, weights in tqdm(enumerate(pop)):
                 self.logger.debug("Generation: {}, agent: {}".format(i, j))
                 agent = NetworkAgent(self.featureGenerator, weights)
@@ -122,7 +152,7 @@ class GeneticFactory:
                         args=(q, evaluationQueue))
             p.start()
             processList.append(p)
-            self.logger.info("Process {} started".format(j))
+            self.logger.debug("Process {} started".format(j))
 
         for i in range(generations):
             self.logger.info("Generation {}".format(i))
@@ -140,9 +170,11 @@ class GeneticFactory:
                     evaluations.append(evaluationQueue.get())
                 self.logger.debug("Current Evaluation Length: {}".format(
                     len(evaluations)))
+                # If we get to a point where our number of evaluations the same as our population, then we
+                # can stop
                 if len(evaluations) == self.totalPopulation:
                     break
-
+            # Doing some logging
             self.logger.debug("Evaluations Length: {}".format(
                 len(evaluations)))
             m = max(evaluations, key=lambda x: x[0])
@@ -151,13 +183,29 @@ class GeneticFactory:
             endtime = time.time()
             self.logger.info("Time to run generation: {}".format(endtime -
                                                                  startTime))
+            # Lets go ahead and log some of those rather important stats onto the csv file
+            if self.csvFile is not None:
+                with open(self.csvFile, "a", newline='') as csvFile:
+                    writer = csv.writer(csvFile)
+                    # lets go ahead and compile some stats about the current generation
+                    scores = [x[0] for x in evaluations]
+                    maxScore = max(scores)
+                    totalScore = sum(scores)
+                    avgScore = totalScore / len(scores)
+                    mWeights = m[1]
+                    t = endtime - startTime
+                    writer.writerow(
+                        [i, maxScore, totalScore, avgScore, mWeights, t])
+
             pop = self.computeNextGeneration(evaluations)
 
+        # We want to kill all the processes
         for j in range(threads):
             q.put(False)
         for p in processList:
             p.join()
         self.logger.debug("All Threads Successfully Joined")
+        # We want to sort the evaluations by score and return the best one
         return sorted(evaluations, key=lambda x: x[0])[-1]
 
 
@@ -169,7 +217,12 @@ def trainGeneticAgent(featureGenerator, totalPopulation=1000, generations=10):
 
 
 def main():
-    trainGeneticAgent(featureVector, totalPopulation=500, generations=50)
+    factory = GeneticFactory(featureVector,
+                             totalPopulation=200,
+                             linear=True,
+                             scoring='tetris',
+                             csvFile='linearTetris.csv')
+    best_agent = factory.runThreadedSimulation(generations=5, threads=16)
 
 
 # Main function

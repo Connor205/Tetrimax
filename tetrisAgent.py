@@ -90,7 +90,7 @@ class FeatureAgent(SimpleAgent):
         prevBoards = {}
         for m in moves:
             prevBoards[board.make_move(pieces[0], m)[0]] = m
-        evaluations = [(np.dot(self.featureVectorGenerator(b),
+        evaluations = [(np.dot(self.featureVectorGenerator(b, board),
                                self.weights), move)
                        for b, move in prevBoards.items()]
         if len(evaluations) == 0:
